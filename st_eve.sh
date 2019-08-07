@@ -6,7 +6,7 @@ passwd pi
 echo "Creating the user that runs the experiment (eve)"
 adduser eve
 adduser eve pi
-adduser eve sudo 
+adduser eve sudo
 adduser eve gpio
 adduser eve i2c
 
@@ -41,7 +41,7 @@ pip3 install adafruit-circuitpython-ads1x15 adafruit-circuitpython-mcp230xx adaf
 
 #Git Clone Repo
 mkdir /eve
-git clone https://github.com/vishhvaan/eve-pi.git /eve
+git clone https://github.com/jrthornham/eve-pi.git /eve
 
 #Copy Service to Location
 cp /eve/webui/eve_webui.service /lib/systemd/system/eve_webui.service
@@ -57,5 +57,3 @@ awk '/address/{gsub(/hostname/,"$hostn")};{print}' /eve/webui/conf/conf.json > /
 #Reboot
 echo "System will reboot now ..."
 #reboot
-
-
