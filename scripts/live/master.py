@@ -454,6 +454,7 @@ class Morbidostat:
         self.elapsed_loop_time = 0
         self.loops = 0
         self.last_dilutionOD = 0
+        self.last_increase = 0
         self.nut = 0
         self.drug = 1
         self.waste = 2
@@ -1070,6 +1071,9 @@ class Morbidostat:
             # i2c_lock[self.sysnum-1] = True
             # time.sleep(0.05)
 
+        diff = self.od_thr - self.avOD
+        increase = self.avOD - self.last_dilutionOD
+
         try:
             if self.pipins:
                 GPIO.setmode(GPIO.BCM)
@@ -1085,71 +1089,231 @@ class Morbidostat:
                     self.pins[pin].value = False
 
 
+            #bellow od threshold
+            if self.avOD < self.od_thr:
+                #decreasing
+                if self.avOD <= self.last_dilutionOD:
 
-            if self.avOD > self.OD_min:
-                self.pump_on(self.P_waste_pins)
-                time.sleep(self.P_waste_times)
-                self.pump_off(self.P_waste_pins)
+                    if increase < self.last_increase and self.last_increase < 0:
+                        self.p_waste_times = 0.7*self.p_waste_times
+                        self.p_nut_times = self.p_waste_times
 
-                self.waste = 3
-                self.vial_drug_mass = self.vial_drug_mass - (self.vial_drug_mass/12)
+                        self.pump_on(self.P_waste_pins)
+                        time.sleep(self.P_waste_times)
+                        self.pump_off(self.P_waste_pins)
 
-                if self.avOD > self.OD_thr and self.avOD > self.last_dilutionOD:
-                    print('[%s] OD Threshold exceeded, pumping %s' % (self.sysstr,self.drug_name))
+                        self.pump_on(self.P_nut_pins)
+                        time.sleep(self.P_nut_times)
+                        self.pump_off(self.P_nut_pins)
 
-                    self.pump_on(self.P_drug_pins)
-                    time.sleep(self.P_drug_times)
-                    self.pump_off(self.P_drug_pins)
-                    self.drug = 2
+                        brmsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and decreasing rapidly. Reducing pump time to %f" % (self.avOD, self.p_nut_times)
+                            )
 
-                    self.vial_drug_mass = self.vial_drug_mass + self.drug_conc*self.drug_vol
+                    else:
+                        self.p_waste_times = 0.9*self.p_waste_times
+                        self.p_nut_times = self.p_waste_times
 
-                    drugamsg = self.slack_client.api_call(
-                        "chat.postMessage",
-                        channel = self.chan,
-                        username=self.sysstr,
-                        icon_url = self.slack_usericon,
-                        thread_ts = self.threadts,
-                        text = "OD = %0.3f, pumping %s. Drug concentration: %f ug/mL" % (self.avOD, self.drug_name, (self.vial_drug_mass)/12)
-                        )
+                        self.pump_on(self.P_waste_pins)
+                        time.sleep(self.P_waste_times)
+                        self.pump_off(self.P_waste_pins)
+
+                        self.pump_on(self.P_nut_pins)
+                        time.sleep(self.P_nut_times)
+                        self.pump_off(self.P_nut_pins)
+
+                        brmsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and decreasing. Reducing pump time to %f" % (self.avOD, self.p_nut_times)
+                            )
+                #increasing
+                elif self.avOD > self.last_dilutionOD:
+                    #diff greater than increase
+                    if diff >= increase:
+                        self.pump_on(self.P_waste_pins)
+                        time.sleep(self.P_waste_times)
+                        self.pump_off(self.P_waste_pins)
+
+                        self.pump_on(self.P_nut_pins)
+                        time.sleep(self.P_nut_times)
+                        self.pump_off(self.P_nut_pins)
+
+                        bismsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and increasing. Pump time is %f" % (self.avOD, self.p_nut_times)
+                            )
+                    #diff less than increase
+                    elif:
+                        self.p_waste_times = 1.1*self.p_waste_times
+                        self.p_nut_times = self.p_waste_times
+
+                        self.pump_on(self.P_waste_pins)
+                        time.sleep(self.P_waste_times)
+                        self.pump_off(self.P_waste_pins)
+
+                        self.pump_on(self.P_nut_pins)
+                        time.sleep(self.P_nut_times)
+                        self.pump_off(self.P_nut_pins)
+
+                        birmsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and increasing rapidly. Increasing pump time to %f" % (self.avOD, self.p_nut_times)
+                            )
+
+            #above od threshold
+            elif self.avOD >= self.od_thr:
+                #increasing
+                if self.avOD >= self.last_dilutionOD:
+
+                    if increase > self.last_increase and self.last_increase > 0:
+
+                        self.p_waste_times = 1.3*self.p_waste_times
+                        self.p_nut_times = self.p_waste_times
+
+                        self.pump_on(self.P_waste_pins)
+                        time.sleep(self.P_waste_times)
+                        self.pump_off(self.P_waste_pins)
+
+                        self.pump_on(self.P_nut_pins)
+                        time.sleep(self.P_nut_times)
+                        self.pump_off(self.P_nut_pins)
+
+                        airmsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and increasing rapidly. Increasing pump time to %f" % (self.avOD, self.p_nut_times)
+                            )
+
+                    else:
+                        self.p_waste_times = 1.1*self.p_waste_times
+                        self.p_nut_times = self.p_waste_times
+
+                        self.pump_on(self.P_waste_pins)
+                        time.sleep(self.P_waste_times)
+                        self.pump_off(self.P_waste_pins)
+
+                        self.pump_on(self.P_nut_pins)
+                        time.sleep(self.P_nut_times)
+                        self.pump_off(self.P_nut_pins)
+
+                        aismsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and increasing slowly. Increasing pump time to %f" % (self.avOD, self.p_nut_times)
+                            )
+
+                #decreasing
+                elif self.avOD < self.last_dilutionOD
+                    #diff greater than decrease
 
 
-                else:
-                    print('[%s] OD below threshold, pumping nutrient' % self.sysstr)
+                    self.pump_on(self.P_waste_pins)
+                    time.sleep(self.P_waste_times)
+                    self.pump_off(self.P_waste_pins)
 
                     self.pump_on(self.P_nut_pins)
                     time.sleep(self.P_nut_times)
                     self.pump_off(self.P_nut_pins)
-                    self.nut = 1
 
-                    thramgs = self.slack_client.api_call(
+                    arsmsg = self.slack_client.api_call(
                         "chat.postMessage",
                         channel = self.chan,
-                        username=self.sysstr,
+                        username = self.sysstr,
                         icon_url = self.slack_usericon,
                         thread_ts = self.threadts,
-                        text = "OD = %0.3f, pumping nutrient. %s concentration: %f ug/mL" % (self.avOD, self.drug_name.capitalize(), (self.vial_drug_mass)/12)
+                        text = "OD = %0.3f and decreasing. Pump time is %f" % (self.avOD, self.p_nut_times)
                         )
 
 
-            else: #report even when pumps aren't activated yet
-
-                # self.vial_drug_mass = 0 if self.vial_drug_mass < 0
-
-                thrbmsg = self.slack_client.api_call(
-                        "chat.postMessage",
-                        channel = self.chan,
-                        username=self.sysstr,
-                        icon_url = self.slack_usericon,
-                        thread_ts = self.threadts,
-                        text = "OD = %0.3f, OD below nutrient pump threshold." % (self.avOD)
-                        )
+#            if self.avOD > self.OD_min:
+#                self.pump_on(self.P_waste_pins)
+#                time.sleep(self.P_waste_times)
+#                self.pump_off(self.P_waste_pins)
+#
+#                self.waste = 3
+#                self.vial_drug_mass = self.vial_drug_mass - (self.vial_drug_mass/12)
+#
+#                if self.avOD > self.OD_thr and self.avOD > self.last_dilutionOD:
+#                    print('[%s] OD Threshold exceeded, pumping %s' % (self.sysstr,self.drug_name))
+#
+#                    self.pump_on(self.P_drug_pins)
+#                    time.sleep(self.P_drug_times)
+#                    self.pump_off(self.P_drug_pins)
+#                    self.drug = 2
+#
+#                    self.vial_drug_mass = self.vial_drug_mass + self.drug_conc*self.drug_vol
+#
+#                    drugamsg = self.slack_client.api_call(
+#                        "chat.postMessage",
+#                        channel = self.chan,
+#                        username=self.sysstr,
+#                        icon_url = self.slack_usericon,
+#                        thread_ts = self.threadts,
+#                        text = "OD = %0.3f, pumping %s. Drug concentration: %f ug/mL" % (self.avOD, self.drug_name, (self.vial_drug_mass)/12)
+#                        )
+#
+#
+#                else:
+#                    print('[%s] OD below threshold, pumping nutrient' % self.sysstr)
+#
+#                    self.pump_on(self.P_nut_pins)
+#                    time.sleep(self.P_nut_times)
+#                    self.pump_off(self.P_nut_pins)
+#                    self.nut = 1
+#
+#                    thramgs = self.slack_client.api_call(
+#                        "chat.postMessage",
+#                        channel = self.chan,
+#                        username=self.sysstr,
+#                        icon_url = self.slack_usericon,
+#                        thread_ts = self.threadts,
+#                        text = "OD = %0.3f, pumping nutrient. %s concentration: %f ug/mL" % (self.avOD, self.drug_name.capitalize(), (self.vial_drug_mass)/12)
+#                        )
+#
+#
+#            else: #report even when pumps aren't activated yet
+#
+#                # self.vial_drug_mass = 0 if self.vial_drug_mass < 0
+#
+#                thrbmsg = self.slack_client.api_call(
+#                        "chat.postMessage",
+#                        channel = self.chan,
+#                        username=self.sysstr,
+#                        icon_url = self.slack_usericon,
+#                        thread_ts = self.threadts,
+#                        text = "OD = %0.3f, OD below nutrient pump threshold." % (self.avOD)
+#                        )
         except Exception as e:
             print ('[%s] CA - WARNING ADC REQUEST CRASHED' % self.sysstr)
             print(e)
             pass
 
         self.last_dilutionOD = self.avOD
+
+        self.last_increase = increase
         # i2c_lock[self.sysnum-1] = False
         # i2c_q.pop(0)
 
@@ -1280,8 +1444,3 @@ threading.Thread(target = live_plotter).start()
 
 
 # threading.Thread(target = slackresponder).start()
-
-
-
-
-
