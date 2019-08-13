@@ -1071,6 +1071,14 @@ class Morbidostat:
             # i2c_lock[self.sysnum-1] = True
             # time.sleep(0.05)
 
+        self.pump_on(self.P_waste_pins)
+        time.sleep(self.P_waste_times)
+        self.pump_off(self.P_waste_pins)
+
+        self.pump_on(self.P_nut_pins)
+        time.sleep(self.P_nut_times)
+        self.pump_off(self.P_nut_pins)
+
         diff = self.od_thr - self.avOD
         increase = self.avOD - self.last_dilutionOD
 
@@ -1095,16 +1103,7 @@ class Morbidostat:
                 if self.avOD <= self.last_dilutionOD:
 
                     if increase < self.last_increase and self.last_increase < 0:
-                        self.p_waste_times = 0.7*self.p_waste_times
-                        self.p_nut_times = self.p_waste_times
-
-                        self.pump_on(self.P_waste_pins)
-                        time.sleep(self.P_waste_times)
-                        self.pump_off(self.P_waste_pins)
-
-                        self.pump_on(self.P_nut_pins)
-                        time.sleep(self.P_nut_times)
-                        self.pump_off(self.P_nut_pins)
+                        self.time_between_pumps = 0.7*self.time_between_pumps
 
                         brmsg = self.slack_client.api_call(
                             "chat.postMessage",
@@ -1112,20 +1111,11 @@ class Morbidostat:
                             username = self.sysstr,
                             icon_url = self.slack_usericon,
                             thread_ts = self.threadts,
-                            text = "OD = %0.3f and decreasing rapidly. Reducing pump time to %f" % (self.avOD, self.p_nut_times)
+                            text = "OD = %0.3f and decreasing rapidly. Reducing time between pumps to %f" % (self.avOD, self.p_nut_times)
                             )
 
                     else:
-                        self.p_waste_times = 0.9*self.p_waste_times
-                        self.p_nut_times = self.p_waste_times
-
-                        self.pump_on(self.P_waste_pins)
-                        time.sleep(self.P_waste_times)
-                        self.pump_off(self.P_waste_pins)
-
-                        self.pump_on(self.P_nut_pins)
-                        time.sleep(self.P_nut_times)
-                        self.pump_off(self.P_nut_pins)
+                        self.time_between_pumps = 0.9*self.time_between_pumps
 
                         brmsg = self.slack_client.api_call(
                             "chat.postMessage",
@@ -1133,19 +1123,12 @@ class Morbidostat:
                             username = self.sysstr,
                             icon_url = self.slack_usericon,
                             thread_ts = self.threadts,
-                            text = "OD = %0.3f and decreasing. Reducing pump time to %f" % (self.avOD, self.p_nut_times)
+                            text = "OD = %0.3f and decreasing. Reducing time between pumps to %f" % (self.avOD, self.p_nut_times)
                             )
                 #increasing
                 elif self.avOD > self.last_dilutionOD:
                     #diff greater than increase
                     if diff >= increase:
-                        self.pump_on(self.P_waste_pins)
-                        time.sleep(self.P_waste_times)
-                        self.pump_off(self.P_waste_pins)
-
-                        self.pump_on(self.P_nut_pins)
-                        time.sleep(self.P_nut_times)
-                        self.pump_off(self.P_nut_pins)
 
                         bismsg = self.slack_client.api_call(
                             "chat.postMessage",
@@ -1153,20 +1136,11 @@ class Morbidostat:
                             username = self.sysstr,
                             icon_url = self.slack_usericon,
                             thread_ts = self.threadts,
-                            text = "OD = %0.3f and increasing. Pump time is %f" % (self.avOD, self.p_nut_times)
+                            text = "OD = %0.3f and increasing. Time between pumps is %f" % (self.avOD, self.p_nut_times)
                             )
                     #diff less than increase
                     elif:
-                        self.p_waste_times = 1.1*self.p_waste_times
-                        self.p_nut_times = self.p_waste_times
-
-                        self.pump_on(self.P_waste_pins)
-                        time.sleep(self.P_waste_times)
-                        self.pump_off(self.P_waste_pins)
-
-                        self.pump_on(self.P_nut_pins)
-                        time.sleep(self.P_nut_times)
-                        self.pump_off(self.P_nut_pins)
+                        self.time_between_pumps = 1.1*self.time_between_pumps
 
                         birmsg = self.slack_client.api_call(
                             "chat.postMessage",
@@ -1174,7 +1148,7 @@ class Morbidostat:
                             username = self.sysstr,
                             icon_url = self.slack_usericon,
                             thread_ts = self.threadts,
-                            text = "OD = %0.3f and increasing rapidly. Increasing pump time to %f" % (self.avOD, self.p_nut_times)
+                            text = "OD = %0.3f and increasing rapidly. Increasing time between pumps to %f" % (self.avOD, self.p_nut_times)
                             )
 
             #above od threshold
@@ -1184,16 +1158,7 @@ class Morbidostat:
 
                     if increase > self.last_increase and self.last_increase > 0:
 
-                        self.p_waste_times = 1.3*self.p_waste_times
-                        self.p_nut_times = self.p_waste_times
-
-                        self.pump_on(self.P_waste_pins)
-                        time.sleep(self.P_waste_times)
-                        self.pump_off(self.P_waste_pins)
-
-                        self.pump_on(self.P_nut_pins)
-                        time.sleep(self.P_nut_times)
-                        self.pump_off(self.P_nut_pins)
+                        self.time_between_pumps = 1.3*self.time_between_pumps
 
                         airmsg = self.slack_client.api_call(
                             "chat.postMessage",
@@ -1201,20 +1166,11 @@ class Morbidostat:
                             username = self.sysstr,
                             icon_url = self.slack_usericon,
                             thread_ts = self.threadts,
-                            text = "OD = %0.3f and increasing rapidly. Increasing pump time to %f" % (self.avOD, self.p_nut_times)
+                            text = "OD = %0.3f and increasing rapidly. Increasing time between pumps to %f" % (self.avOD, self.p_nut_times)
                             )
 
                     else:
-                        self.p_waste_times = 1.1*self.p_waste_times
-                        self.p_nut_times = self.p_waste_times
-
-                        self.pump_on(self.P_waste_pins)
-                        time.sleep(self.P_waste_times)
-                        self.pump_off(self.P_waste_pins)
-
-                        self.pump_on(self.P_nut_pins)
-                        time.sleep(self.P_nut_times)
-                        self.pump_off(self.P_nut_pins)
+                        self.time_between_pumps = 1.1*self.time_between_pumps
 
                         aismsg = self.slack_client.api_call(
                             "chat.postMessage",
@@ -1222,31 +1178,33 @@ class Morbidostat:
                             username = self.sysstr,
                             icon_url = self.slack_usericon,
                             thread_ts = self.threadts,
-                            text = "OD = %0.3f and increasing slowly. Increasing pump time to %f" % (self.avOD, self.p_nut_times)
+                            text = "OD = %0.3f and increasing slowly. Increasing time between pumps to %f" % (self.avOD, self.p_nut_times)
                             )
 
                 #decreasing
                 elif self.avOD < self.last_dilutionOD
                     #diff greater than decrease
+                    if increase > diff:
 
+                        arsmsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and decreasing. Time between pumps is %f" % (self.avOD, self.p_nut_times)
+                            )
 
-                    self.pump_on(self.P_waste_pins)
-                    time.sleep(self.P_waste_times)
-                    self.pump_off(self.P_waste_pins)
+                    elif increase >= diff:
 
-                    self.pump_on(self.P_nut_pins)
-                    time.sleep(self.P_nut_times)
-                    self.pump_off(self.P_nut_pins)
-
-                    arsmsg = self.slack_client.api_call(
-                        "chat.postMessage",
-                        channel = self.chan,
-                        username = self.sysstr,
-                        icon_url = self.slack_usericon,
-                        thread_ts = self.threadts,
-                        text = "OD = %0.3f and decreasing. Pump time is %f" % (self.avOD, self.p_nut_times)
-                        )
-
+                        arrmsg = self.slack_client.api_call(
+                            "chat.postMessage",
+                            channel = self.chan,
+                            username = self.sysstr,
+                            icon_url = self.slack_usericon,
+                            thread_ts = self.threadts,
+                            text = "OD = %0.3f and decreasing rapidly. Time between pumps is %f" % (self.avOD, self.p_nut_times)
+                            )
 
 #            if self.avOD > self.OD_min:
 #                self.pump_on(self.P_waste_pins)
