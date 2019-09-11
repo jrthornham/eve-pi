@@ -19,7 +19,7 @@ except ValueError:
     sys.exit("Please type a number.")
 
 config = configparser.ConfigParser()
-config.read('../test/multiplex/eve-conf.ini')
+config.read('/eve/scripts/live/eve-conf.ini')
 
 totsys = (''.join(config.sections())).count('EVE')
 sysstr = 'EVE' + str(evenum)
